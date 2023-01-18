@@ -5,9 +5,12 @@ import java.io.*;
 public class Node extends Thread {
     public int id;
     public int num_of_nodes;
+    private String IP;
     private HashMap<Integer, Neighbor> neighbors;
     private Vector<Pair<Integer, Double>> vectorOfEdgesAndWeights;
     private List<Integer> ports;
+
+
 
 
     public Node(int id, int num_of_nodes) {
@@ -16,6 +19,9 @@ public class Node extends Thread {
         this.neighbors = new HashMap<>();
         vectorOfEdgesAndWeights = new Vector<Pair<Integer, Double>>();
         ports = new ArrayList<Integer>();
+        this.IP = "127.0.0.1";
+
+
     }
 
     public void addPair(Integer key, Double value) {
@@ -32,6 +38,45 @@ public class Node extends Thread {
         System.out.println("Node " + this.id + " received message: " + message);
         // other processing logic goes here
     }
+    @Override
+    public void run(){
+        boolean stop = false;
+
+
+
+        for (Integer port : this.ports){
+            // Creates a process for each port to listen in parallel
+            new Thread(() -> {
+                try {
+                    System.out.println("Node" + this.id + "-" + port);
+                    ServerSocket serverSocket = new ServerSocket(port);
+                    System.out.println("Node" + this.id + "-" + port + "again1");
+                    while (!stop){
+                        System.out.println("Node" + this.id + "-" + port + "again2");
+                        Socket socket = serverSocket.accept();// start listen
+                        System.out.println("Node" + this.id + "-" + port + "again3");
+                        new Thread(() ->{
+                            try {
+                                InputStream in = socket.getInputStream();
+                                byte[] massageBytes = new byte[1024];
+                                in.read(massageBytes);
+                                String massage = new String(massageBytes);
+                                processMessage(massage);
+                                socket.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }).run();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).run();
+
+
+        }
+
+    }
 
     // Sends a message to a specified neighbor (identified by receiverID)
     public void sendMessage(int receiverID, String message) {
@@ -39,7 +84,7 @@ public class Node extends Thread {
         Neighbor receiver = this.neighbors.get(receiverID);
         try {
             // Create a socket connection to the neighbor's IP address and port
-            Socket socket = new Socket(receiver.getIpAddress(), receiver.getSent_port());
+            Socket socket = new Socket(this.IP, receiver.getSent_port());
             // Get the output stream from the socket to write the message
             OutputStream out = socket.getOutputStream();
             // Write the message to the output stream
@@ -55,28 +100,6 @@ public class Node extends Thread {
     }
 
 
-    public void receiveMessage() {
-
-        for (Integer port : ports) { // Iterating through all ports in the ports list
-            Thread thread = new Thread(() -> { // Creating a new thread for each port
-                try {
-                    ServerSocket serverSocket = new ServerSocket(port); // Create a server socket on the port
-                    while (true) {
-                        Socket socket = serverSocket.accept(); // Wait for incoming connection
-                        InputStream in = socket.getInputStream();
-                        byte[] messageBytes = new byte[1024];
-                        in.read(messageBytes); // Read the message from the input stream
-                        String message = new String(messageBytes); // Convert the message to string
-                        processMessage(message); // Process the message
-                        socket.close(); // Close the socket
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace(); // Printing the error if any
-                }
-            });
-            thread.start(); // Starting the thread
-        }
-    }
 
 
 

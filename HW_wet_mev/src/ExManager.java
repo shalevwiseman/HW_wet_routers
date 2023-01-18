@@ -6,6 +6,7 @@ public class ExManager {
     private String path;
     private int num_of_nodes;
     public HashMap<Integer, Node> nodes;
+    private String IpAdrress;
     // your code here
 
     public ExManager(String path){
@@ -60,7 +61,10 @@ public class ExManager {
     }
 
     public void start(){
-        // your code here
+        for(Node node: nodes.values()){
+            node.run();
+        }
+        nodes.get(1).sendMessage(4, "hey");
     }
 
     public void terminate(){
