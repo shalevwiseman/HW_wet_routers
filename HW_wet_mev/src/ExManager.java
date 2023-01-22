@@ -52,7 +52,11 @@ public class ExManager {
                         int get_port = Integer.parseInt(words[i + 3]);
                         node.addNeighbor(neighbor_name, weight, sent_port, get_port);
                     }
+                    node.serversUp();
                 }
+            }
+            for (Node node : nodes.values()){
+                node.clientsUp();
             }
             reader.close();
         } catch (IOException e) {
@@ -62,9 +66,10 @@ public class ExManager {
 
     public void start(){
         for(Node node: nodes.values()){
+            System.out.println("node" + node.id);
             node.run();
         }
-        nodes.get(1).sendMessage(4, "hey");
+        nodes.get(1).sendMessage("hello");
     }
 
     public void terminate(){
