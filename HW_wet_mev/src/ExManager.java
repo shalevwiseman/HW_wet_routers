@@ -66,10 +66,13 @@ public class ExManager {
 
     public void start(){
         for(Node node: nodes.values()){
-            System.out.println("node" + node.id);
+
             node.run();
         }
-        nodes.get(1).sendMessage("hello");
+
+        nodes.get(3).createVector();
+        String message = nodes.get(3).getVectorAsString();
+        nodes.get(3).sendMessage(message);
     }
 
     public void terminate(){

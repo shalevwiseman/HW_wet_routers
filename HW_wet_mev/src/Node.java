@@ -72,53 +72,47 @@ public class Node extends Thread {
 
                                 new Thread(() -> {
                                     try {
-                                        System.out.println("node: " + this.id + " try");
-                                        DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-                                        System.out.println("node: " + this.id + " create input");
-                                        // using TLV protocol of messages [1 byte character indicate the type| 4 byte Integer indicate the length | N byte of message]
 
-                                        char dataType = 's';
-                                        System.out.println("node: " + this.id + "this is the data type: " + dataType);
-                                        int length = input.readInt();
-                                        System.out.println("node: " + this.id + "this is the data length: " + length);
-                                        if (dataType == 's'){
+                                        DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+                                        int id = in.readInt();
+                                        int len = in.readInt();
+                                        System.out.println("id: " + id + " len: "+ len);
 
-                                            byte[] messageByte = new byte[length];
-                                            boolean end = false;
-                                            StringBuilder dataString = new StringBuilder(length);
-                                            int totalBytesRead = 0;
-                                            // Read function might not be able to read all data in one call. so, we need to cal the read() in while loop:
-                                            System.out.println("node: " + this.id + "before while");
-                                            while (!end){
-                                                int currentBytesRead = input.read(messageByte);
-                                                totalBytesRead = currentBytesRead + totalBytesRead;
-                                                if (totalBytesRead <= length){
-                                                    dataString.append(new String(messageByte, 0, currentBytesRead, StandardCharsets.UTF_8));
-                                                }else {
-                                                    dataString.append(new String(messageByte, 0, length - totalBytesRead + currentBytesRead, StandardCharsets.UTF_8));
-                                                }
-                                                if (dataString.length() >= length){
-                                                    end = true;
-                                                }
+
+                                        byte[] buffer = new byte[len];
+
+                                        boolean end = false;
+                                        StringBuilder dataString = new StringBuilder(len);
+                                        int totalBytesRead = 0;
+                                        // Read function might not be able to read all data in one call. so, we need to cal the read() in while loop:
+
+                                        while (!end){
+                                            int currentBytesRead = in.read(buffer);
+                                            totalBytesRead = currentBytesRead + totalBytesRead;
+                                            if (totalBytesRead <= len){
+                                                dataString.append(new String(buffer, 0, currentBytesRead, StandardCharsets.UTF_8));
+                                            }else {
+                                                dataString.append(new String(buffer, 0, len - totalBytesRead + currentBytesRead, StandardCharsets.UTF_8));
                                             }
-                                            System.out.println("node: " + this.id + "before process");
-                                            processMessage(dataString.toString());
+                                            if (dataString.length() >= len){
+                                                end = true;
+                                            }
                                         }
-//                                        InputStream in = socket.getInputStream();
-//                                          System.out.println(this.id +" - get here1" + " ");
-//                                        byte[] massageBytes = new byte[1024];
-//                                        System.out.println("get here2");
 
-//                                        in.read(massageBytes);
-//                                        System.out.println("get here3");
-//                                        String massage = new String(massageBytes);
-//                                        processMessage(massage);
+                                        processMessage(dataString.toString());
                                         socket.close();
-                                    } catch (IOException e) {
+                                    }
+                                    catch (IOException e) {
                                         e.printStackTrace();
                                     }
+                                    //int dataFromNeighbor = socket.getInputStream().read(buffer);
+
+                                        //String message = new String(buffer, 0, dataFromNeighbor, "UTF-8");
+                                        //System.out.println(this.id + "after data " + message);
+
+
                                 }).start();
-                            } catch (IOException e) {
+                            }catch (IOException e) {
                                 e.printStackTrace();
                             }
 
@@ -138,26 +132,17 @@ public class Node extends Thread {
         for (Neighbor neighbor : neighbors.values()) {
 
             // Retrieve the neighbor object from the list of neighbors
-            ;
+
             try {
-
-                // Create a socket connection to the neighbor's IP address and port
-                Socket socket = new Socket(this.IP, neighbor.getSent_port());
-                // Get the output stream from the socket to write the message
-
-                //OutputStream out = socket.getOutputStream();
-                // Write the message to the output stream
-                DataOutputStream output = new DataOutputStream(socket.getOutputStream());
-
-                char type = 's';
+                int port = neighbor.getSent_port();
+                Socket socket = this.sendSockets.get(port);
+                DataOutputStream out = new DataOutputStream(socket.getOutputStream());
                 byte[] dataInBytes = message.getBytes(StandardCharsets.UTF_8);
-                output.writeChar(type);
-                output.writeInt(dataInBytes.length);
-                output.write(dataInBytes);
-                // Flush the output stream to ensure the message is sent
-                output.flush();
-                // Close the socket connection
-                socket.close();
+                out.writeInt(this.id);
+                out.writeInt(dataInBytes.length);
+                out.write(dataInBytes);
+                out.flush();
+                //socket.getOutputStream().write(message.getBytes());
             } catch (IOException e) {
                 // Print the stack trace if an exception occurs
                 e.printStackTrace();
