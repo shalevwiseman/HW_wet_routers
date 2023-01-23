@@ -14,6 +14,7 @@ public class Node extends Thread {
     private List<Integer> sendPorts;
     private HashMap<Integer, Socket> sendSockets;
     private List<Pair<Integer, Double>> edeges;
+    Matrix matrix;
 
 
 
@@ -29,9 +30,11 @@ public class Node extends Thread {
         this.sendPorts = new ArrayList<>();
         this.sendSockets = new HashMap<>();
         this.ServersSocket = new HashMap<>();
+        matrix = new Matrix(num_of_nodes);
 
 
     }
+
 
     public void addPair(Integer key, Double value) {
         Pair<Integer, Double> pair = new Pair<Integer, Double>(key, value);
@@ -50,8 +53,10 @@ public class Node extends Thread {
         }
     }
 
-    public void processMessage(String message) {
+    public void processMessage(int nodeId, String message) {
         System.out.println("Node " + this.id + " received message: " + message);
+        matrix.updateMat(nodeId, message);
+        System.out.println(matrix.toString());
         // other processing logic goes here
     }
 
@@ -99,7 +104,7 @@ public class Node extends Thread {
                                             }
                                         }
 
-                                        processMessage(dataString.toString());
+                                        processMessage(id, dataString.toString());
                                         socket.close();
                                     }
                                     catch (IOException e) {
@@ -156,13 +161,17 @@ public class Node extends Thread {
 
 
     public void createVector(){
-         Iterator<Integer> iterator = neighbors.keySet().iterator();
-         while (iterator.hasNext()){
-             Integer neighborName = iterator.next();
-             Neighbor neighbor = neighbors.get(neighborName);
-             Double weight = neighbor.getWeight();
-             this.addPair(neighborName, weight);
-         }
+
+
+        Double notIn = Double.valueOf(-1);
+        for (int i = 1; i < num_of_nodes + 1; i++){
+            if (neighbors.containsKey(i)){
+                addPair(i, neighbors.get(i).getWeight());
+            }
+            else {
+                addPair(i, notIn);
+            }
+        }
      }
 
     public void print_graph(){
@@ -189,17 +198,21 @@ public class Node extends Thread {
 
         getPorts.add(get_port);//add the get port to the list
         this.sendPorts.add(sent_port);//add the 'send port' to the list
-        addPair(node_name,weight);
+
 
     }
 
     public String getVectorAsString(){
+        StringBuilder vector = new StringBuilder();
         String s = null;
         for (Pair<Integer, Double> pair : edeges){
+            vector.append(pair.toString());
+            vector.append(",");
+            vector.append(" ");
             s += pair.toString();
         }
 
-        return s;
+        return "[" + vector.toString() + "]";
     }
 
     public HashMap<Integer, Neighbor> getNeighbors() {

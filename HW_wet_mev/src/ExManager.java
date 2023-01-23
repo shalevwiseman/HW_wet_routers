@@ -57,6 +57,7 @@ public class ExManager {
             }
             for (Node node : nodes.values()){
                 node.clientsUp();
+                node.createVector();
             }
             reader.close();
         } catch (IOException e) {
@@ -70,7 +71,7 @@ public class ExManager {
             node.run();
         }
 
-        nodes.get(3).createVector();
+
         String message = nodes.get(3).getVectorAsString();
         nodes.get(3).sendMessage(message);
     }
