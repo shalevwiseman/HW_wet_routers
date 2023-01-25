@@ -56,7 +56,7 @@ public class ExManager {
                 }
             }
             for (Node node : nodes.values()){
-                node.clientsUp();
+                //node.clientsUp();
                 node.createVector();
             }
             reader.close();
@@ -65,15 +65,19 @@ public class ExManager {
         }
     }
 
-    public void start(){
+    public void start() {
+        //every node start to listen
         for(Node node: nodes.values()){
 
             node.run();
         }
 
+        //every node start to send his vector
+        for (int i = 1; i < num_of_nodes + 1; i++){
+            String message = nodes.get(i).getVectorAsString();
+            nodes.get(i).sendMessage(message, i);
+        }
 
-        String message = nodes.get(3).getVectorAsString();
-        nodes.get(3).sendMessage(message);
     }
 
     public void terminate(){

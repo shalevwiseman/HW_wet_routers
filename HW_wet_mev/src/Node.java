@@ -2,10 +2,15 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.io.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Node extends Thread {
     public int id;
     public int num_of_nodes;
+    private int nodeCounter;
+    private HashSet<Integer> receiveMessageIds;
     private String IP;
     private HashMap<Integer, Neighbor> neighbors;
     private Vector<Pair<Integer, Double>> vectorOfEdgesAndWeights;
@@ -24,6 +29,8 @@ public class Node extends Thread {
         this.num_of_nodes = num_of_nodes;
         this.neighbors = new HashMap<>();
         this.edeges = new ArrayList<>();
+        this.nodeCounter = 0;
+        this.receiveMessageIds = new HashSet<>();
         vectorOfEdgesAndWeights = new Vector<Pair<Integer, Double>>();
         getPorts = new ArrayList<Integer>();
         this.IP = "localhost";
@@ -31,6 +38,7 @@ public class Node extends Thread {
         this.sendSockets = new HashMap<>();
         this.ServersSocket = new HashMap<>();
         matrix = new Matrix(num_of_nodes);
+
 
 
     }
@@ -53,10 +61,24 @@ public class Node extends Thread {
         }
     }
 
+    public synchronized void uniqueMessageCounter(Integer id){
+        if (!this.receiveMessageIds.contains(id)){
+
+            this.nodeCounter ++;
+
+            this.receiveMessageIds.add(id);
+
+            //System.out.println("node " + this.id + " received message from node " + id + " and got from:" + this.receiveMessageIds.size() + " nodes");
+
+
+        }
+    }
+
     public void processMessage(int nodeId, String message) {
-        System.out.println("Node " + this.id + " received message: " + message);
         matrix.updateMat(nodeId, message);
-        System.out.println(matrix.toString());
+        //System.out.println(matrix.toString());
+        //System.out.println("node: " + this.id + " process");
+
         // other processing logic goes here
     }
 
@@ -64,16 +86,17 @@ public class Node extends Thread {
 
     @Override
     public void run(){
-        boolean stop = false;
+        AtomicReference<AtomicBoolean> stop = new AtomicReference<>(new AtomicBoolean(false));
 
-            new Thread(() -> {
-                while (!stop) {
+
+
                     for (ServerSocket serverSocket : ServersSocket.values()) {
-                        //system.out.println("Node" + this.id + "-" + serverSocket + "again2");
+                        new Thread(() -> {
+                            while (receiveMessageIds.size() < num_of_nodes) {
 
                             try {
 
-                                Socket socket = serverSocket.accept();// start listen
+                                Socket socket = serverSocket.accept();// start listen, if we pass this code line its mean that we got a message
 
                                 new Thread(() -> {
                                     try {
@@ -81,7 +104,7 @@ public class Node extends Thread {
                                         DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
                                         int id = in.readInt();
                                         int len = in.readInt();
-                                        System.out.println("id: " + id + " len: "+ len);
+
 
 
                                         byte[] buffer = new byte[len];
@@ -104,10 +127,26 @@ public class Node extends Thread {
                                             }
                                         }
 
+                                        //System.out.println(this.id + " got message Org from: " + id);
+
+                                        //adding the ID that i got the message from to the set in a sync func
+                                        uniqueMessageCounter(id);
+
+
                                         processMessage(id, dataString.toString());
+
+                                        sendMessage(dataString.toString(), id);
+
+                                        //if (!receiveMessageIds.contains(id)){}
+                                        TimeUnit.SECONDS.sleep(2);
                                         socket.close();
+
+
+
                                     }
                                     catch (IOException e) {
+                                        e.printStackTrace();
+                                    } catch (InterruptedException e) {
                                         e.printStackTrace();
                                     }
                                     //int dataFromNeighbor = socket.getInputStream().read(buffer);
@@ -117,15 +156,15 @@ public class Node extends Thread {
 
 
                                 }).start();
+
                             }catch (IOException e) {
                                 e.printStackTrace();
                             }
-
-
-
                     }
-                }
-            }).start();
+                }).start();
+
+
+            }
 
 
         }
@@ -133,20 +172,23 @@ public class Node extends Thread {
 
 
     // Sends a message to a specified neighbor (identified by receiverID)
-    public void sendMessage(String message) {
+    public void sendMessage(String message, int id) {
         for (Neighbor neighbor : neighbors.values()) {
 
             // Retrieve the neighbor object from the list of neighbors
 
+
             try {
+                Socket socket = new Socket(this.IP,neighbor.getSent_port());
                 int port = neighbor.getSent_port();
-                Socket socket = this.sendSockets.get(port);
+                //Socket socket = this.sendSockets.get(port);
                 DataOutputStream out = new DataOutputStream(socket.getOutputStream());
                 byte[] dataInBytes = message.getBytes(StandardCharsets.UTF_8);
-                out.writeInt(this.id);
+                out.writeInt(id);
                 out.writeInt(dataInBytes.length);
                 out.write(dataInBytes);
                 out.flush();
+                //System.out.println("node: " + this.id + " from: " + id + " send to " + neighbor.getNode_name() + " message " + message);
                 //socket.getOutputStream().write(message.getBytes());
             } catch (IOException e) {
                 // Print the stack trace if an exception occurs
@@ -174,8 +216,14 @@ public class Node extends Thread {
         }
      }
 
-    public void print_graph(){
-        return;
+    public void print_graph() {
+        try{
+            TimeUnit.SECONDS.sleep(2);
+        }
+        catch (InterruptedException e){
+            e.printStackTrace();
+        }
+        System.out.println(matrix.toString());
     }
 
 
